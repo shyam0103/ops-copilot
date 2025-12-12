@@ -187,7 +187,7 @@ Built over 6 weeks (Oct-Nov 2025) to explore production AI agent patterns and va
 <img width="1920" height="1081" alt="chat" src="https://github.com/user-attachments/assets/a703ae66-5368-41a9-a124-37097053ee3e" />
 
 ### Ticketing System:
-<img width="1920" height="1258" alt="tickets" src="https://github.com/user-attachments/assets/b243b17f-efbf-4a2f-8950-dba9f5f51a66" />
+<img width="1920" height="1258" alt="tickets" src="https://github.com/user-attachments/assets/4c9dc024-8076-4c78-92cd-4dbcad2cd581" />
 
 ### Main UI:
 <img width="959" height="472" alt="ui" src="https://github.com/user-attachments/assets/d29d5e06-70f2-4abd-9262-f28682e7bf25" />
