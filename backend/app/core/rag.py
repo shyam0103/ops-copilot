@@ -2,10 +2,10 @@
 #
 # RAG helper module:
 # - uses a single persistent Chroma collection
-# - stores all chunks (with document_id + page in metadata)
+# - stores all chunks (with document_id + page + user_id in metadata)
 # - provides `add_chunks` and `search` helpers
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 import os
 import uuid
 
@@ -37,7 +37,7 @@ def get_collection():
 def add_chunks(texts: List[str], metadatas: List[Dict[str, Any]]) -> None:
     """
     Add text chunks to Chroma with metadata like:
-      {"document_id": 3, "page": 1}
+      {"document_id": 3, "page": 1, "user_id": 5}
     """
     if not texts:
         return
@@ -56,18 +56,22 @@ def add_chunks(texts: List[str], metadatas: List[Dict[str, Any]]) -> None:
     )
 
 
-def search(query: str) -> Dict[str, Any]:
+def search(query: str, user_id: Optional[int] = None) -> Dict[str, Any]:
     """
-    Simple vector search over all document chunks.
-
-    We intentionally ask for more results (n_results=10) so that
-    when there are multiple documents, we don't get stuck only
-    on the very first one.
+    🔒 USER-SCOPED vector search over document chunks.
+    
+    If user_id is provided, only return chunks belonging to that user.
     """
     collection = get_collection()
+
+    # 🔒 Build where filter for user isolation
+    where_filter = None
+    if user_id is not None:
+        where_filter = {"user_id": user_id}
 
     results = collection.query(
         query_texts=[query],
         n_results=10,  # top 10 chunks across all docs
+        where=where_filter  # 🔒 USER ISOLATION
     )
     return results

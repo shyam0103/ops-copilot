@@ -15,6 +15,7 @@ class GraphState(TypedDict, total=False):
     # Input
     user_message: str
     conversation: List[Dict[str, str]]  # chat history: [{role, content}, ...]
+    user_id: Optional[int]  # 🔒 USER ID FOR MULTI-TENANCY
 
     # Planner output
     plan_intent: Literal[
@@ -44,11 +45,11 @@ class GraphState(TypedDict, total=False):
     # Ticket (result of create/update)
     ticket_id: Optional[int]
 
-    # NEW: per-turn trace of what each node did
+    # per-turn trace of what each node did
     trace: List[Dict[str, Any]]
 
 
-# NEW: Trace helper function
+# Trace helper function
 def _append_trace(
     state: GraphState,
     node: str,
@@ -66,15 +67,15 @@ def _append_trace(
 # ---------- TOOLS ----------
 
 
-def build_ticket_list_answer(user_message: str) -> str:
+def build_ticket_list_answer(user_message: str, user_id: int) -> str:
     """
-    Tool-style function: reads tickets from DB and returns a text summary.
-    Used when intent == 'list_tickets'.
+    🔒 Tool-style function: reads tickets from DB (USER-SCOPED) and returns a text summary.
     """
     db = SessionLocal()
     try:
         tickets = (
             db.query(Ticket)
+            .filter(Ticket.user_id == user_id)  # 🔒 USER ISOLATION
             .order_by(Ticket.created_at.desc())
             .limit(20)
             .all()
@@ -84,11 +85,11 @@ def build_ticket_list_answer(user_message: str) -> str:
 
     if not tickets:
         return (
-            "There are currently no tickets in the system. "
+            "You have no tickets in the system. "
             "You can create one by describing an issue or request."
         )
 
-    lines = ["Here are the latest tickets:\n"]
+    lines = ["Here are your latest tickets:\n"]
     for t in tickets:
         lines.append(
             f"- #{t.id} | {t.status.upper()} | {t.severity.upper()} | {t.title}"
@@ -108,12 +109,12 @@ def build_ticket_list_answer(user_message: str) -> str:
 
 def update_ticket_tool(state: GraphState) -> str:
     """
-    Tool-style function: update a ticket's status/severity.
-    Used when intent == 'update_ticket'.
+    🔒 Tool-style function: update a ticket's status/severity (USER-SCOPED).
     """
     ticket_id = state.get("target_ticket_id")
     new_status = (state.get("new_status") or "").lower() or None
     new_severity = (state.get("new_severity") or "").lower() or None
+    user_id = state.get("user_id")
 
     if ticket_id is None:
         return (
@@ -123,9 +124,15 @@ def update_ticket_tool(state: GraphState) -> str:
 
     db = SessionLocal()
     try:
-        ticket = db.query(Ticket).filter(Ticket.id == ticket_id).first()
+        # 🔒 Only allow updating user's own tickets
+        ticket = (
+            db.query(Ticket)
+            .filter(Ticket.id == ticket_id, Ticket.user_id == user_id)
+            .first()
+        )
+        
         if not ticket:
-            return f"Ticket #{ticket_id} was not found."
+            return f"Ticket #{ticket_id} was not found or does not belong to you."
 
         changes = []
         if new_status:
@@ -253,7 +260,7 @@ def planner_node(state: GraphState) -> GraphState:
         }
     )
 
-    # NEW: Log planner decision
+    # Log planner decision
     ticket_action = None
     if intent == "create_ticket" and create_ticket:
         ticket_action = "create"
@@ -272,8 +279,9 @@ def planner_node(state: GraphState) -> GraphState:
 
 
 def rag_node(state: GraphState) -> GraphState:
-    """Retrieve relevant document chunks if use_rag is True."""
+    """🔒 Retrieve relevant document chunks if use_rag is True (USER-SCOPED)."""
     intent = state.get("plan_intent")
+    user_id = state.get("user_id")
 
     # For list_tickets and update_ticket, we do NOT need RAG at all.
     if intent in ("list_tickets", "update_ticket"):
@@ -299,8 +307,10 @@ def rag_node(state: GraphState) -> GraphState:
     # --- DEBUG: see what RAG is actually returning ---
     print("\n===== RAG DEBUG =====")
     print("Query:", repr(query))
+    print(f"User ID: {user_id}")
 
-    rag_results = search(query)
+    # 🔒 Pass user_id to search for isolation
+    rag_results = search(query, user_id=user_id)
     context_blocks: List[str] = []
 
     if rag_results and rag_results.get("documents"):
@@ -325,7 +335,7 @@ def rag_node(state: GraphState) -> GraphState:
 
     state["context_blocks"] = context_blocks
     
-    # NEW: Log retrieved chunks
+    # Log retrieved chunks
     num_chunks = len(context_blocks)
     doc_ids: set[Any] = set()
     if rag_results and rag_results.get("metadatas"):
@@ -333,7 +343,6 @@ def rag_node(state: GraphState) -> GraphState:
             for m in metas:
                 doc_id = m.get("document_id")
                 if doc_id is not None:
-                    # Assuming doc_id is or can be cast to int for TraceStep schema
                     try:
                         doc_ids.add(int(doc_id))
                     except (ValueError, TypeError):
@@ -359,13 +368,13 @@ def answer_node(state: GraphState) -> GraphState:
     """
     intent = state.get("plan_intent", "knowledge_query")
     query = state["user_message"]
+    user_id = state.get("user_id")
 
     # list_tickets → tool only
     if intent == "list_tickets":
-        answer = build_ticket_list_answer(query)
+        answer = build_ticket_list_answer(query, user_id)
         state["answer"] = answer
 
-        # NEW: Log ticket list
         _append_trace(state, "tickets", "Listed tickets for the user.")
 
         conversation = state.get("conversation", []).copy()
@@ -380,7 +389,6 @@ def answer_node(state: GraphState) -> GraphState:
         answer = update_ticket_tool(state)
         state["answer"] = answer
 
-        # NEW: Log ticket update
         _append_trace(
             state,
             "tickets",
@@ -398,7 +406,6 @@ def answer_node(state: GraphState) -> GraphState:
     context_blocks = state.get("context_blocks") or []
 
     if context_blocks:
-        # 🔥 NEW, LESS PARANOID PROMPT
         context_text = "\n\n".join(context_blocks)
         system_prompt = (
             "You are OpsCopilot, a generic operations assistant. "
@@ -432,7 +439,6 @@ def answer_node(state: GraphState) -> GraphState:
     answer = llm_client.chat(messages)
     state["answer"] = answer
 
-    # NEW: Log answer mode
     _append_trace(
         state,
         "answer",
@@ -449,12 +455,13 @@ def answer_node(state: GraphState) -> GraphState:
 
 
 def ticket_node(state: GraphState) -> GraphState:
-    """Create a ticket in DB if plan says so."""
+    """🔒 Create a ticket in DB if plan says so (USER-SCOPED)."""
     if not (state.get("plan_intent") == "create_ticket" and state.get("create_ticket")):
         return state
 
     user_message = state["user_message"]
     answer = state.get("answer", "")
+    user_id = state.get("user_id")
 
     title = state.get("ticket_title") or f"Issue: {user_message[:60]}"
     description = state.get("ticket_description") or (
@@ -465,11 +472,13 @@ def ticket_node(state: GraphState) -> GraphState:
     db = SessionLocal()
     ticket_id = None
     try:
+        # 🔒 Create ticket with user_id
         ticket = Ticket(
             title=title,
             description=description,
             status="open",
             severity=severity,
+            user_id=user_id  # 🔒 USER ISOLATION
         )
         db.add(ticket)
         db.commit()
@@ -479,7 +488,6 @@ def ticket_node(state: GraphState) -> GraphState:
     finally:
         db.close()
 
-    # NEW: Log ticket creation
     _append_trace(state, "tickets", f"Created new ticket #{ticket_id}")
 
     return state
