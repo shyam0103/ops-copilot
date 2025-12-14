@@ -4,6 +4,8 @@ import axios from "axios";
 
 const AuthContext = createContext(null);
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(localStorage.getItem("token"));
@@ -11,7 +13,6 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     if (token) {
-      // Verify token on mount
       verifyToken();
     } else {
       setLoading(false);
@@ -20,7 +21,7 @@ export const AuthProvider = ({ children }) => {
 
   const verifyToken = async () => {
     try {
-      const res = await axios.get("http://127.0.0.1:8000/auth/whoami", {
+      const res = await axios.get(`${API_BASE}/auth/whoami`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setUser(res.data);
@@ -37,26 +38,22 @@ export const AuthProvider = ({ children }) => {
     formData.append("username", email);
     formData.append("password", password);
 
-    const res = await axios.post(
-      "http://127.0.0.1:8000/auth/login",
-      formData
-    );
+    const res = await axios.post(`${API_BASE}/auth/login`, formData);
 
     const newToken = res.data.access_token;
     localStorage.setItem("token", newToken);
     setToken(newToken);
 
-    // Get user info
-    const userRes = await axios.get("http://127.0.0.1:8000/auth/whoami", {
+    const userRes = await axios.get(`${API_BASE}/auth/whoami`, {
       headers: { Authorization: `Bearer ${newToken}` },
     });
-    setUser(userRes.data);
 
+    setUser(userRes.data);
     return userRes.data;
   };
 
   const register = async (email, password) => {
-    const res = await axios.post("http://127.0.0.1:8000/auth/register", {
+    const res = await axios.post(`${API_BASE}/auth/register`, {
       email,
       password,
     });
@@ -65,12 +62,11 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem("token", newToken);
     setToken(newToken);
 
-    // Get user info
-    const userRes = await axios.get("http://127.0.0.1:8000/auth/whoami", {
+    const userRes = await axios.get(`${API_BASE}/auth/whoami`, {
       headers: { Authorization: `Bearer ${newToken}` },
     });
-    setUser(userRes.data);
 
+    setUser(userRes.data);
     return userRes.data;
   };
 
@@ -95,4 +91,4 @@ export const useAuth = () => {
     throw new Error("useAuth must be used within AuthProvider");
   }
   return context;
-}; 
+};
