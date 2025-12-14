@@ -340,3 +340,49 @@ button:hover:not(:disabled) {
     transform: rotate(360deg);
   }
 }
+/* Add to existing App.css */
+
+.status-success {
+  font-size: 12px;
+  color: #86efac;
+  background-color: #064e3b;
+  border: 1px solid #059669;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 8px;
+}
+
+.status-error {
+  font-size: 12px;
+  color: #fca5a5;
+  background-color: #7f1d1d;
+  border: 1px solid #b91c1c;
+  border-radius: 6px;
+  padding: 8px 10px;
+  margin-top: 8px;
+}
+
+input[type="file"] {
+  font-size: 13px;
+  padding: 8px;
+  border: 1px solid #374151;
+  border-radius: 6px;
+  background-color: #0f172a;
+  color: #e5e7eb;
+  cursor: pointer;
+}
+
+input[type="file"]::file-selector-button {
+  background-color: #374151;
+  color: #e5e7eb;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  margin-right: 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+input[type="file"]::file-selector-button:hover {
+  background-color: #4b5563;
+}

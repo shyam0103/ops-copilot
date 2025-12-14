@@ -21,12 +21,16 @@ export default function DocumentUploader() {
       });
 
       setStatus(
-        `Uploaded: document_id=${res.data.document_id}, chunks=${res.data.chunks}`
+        `✅ Uploaded: ${res.data.file_type.toUpperCase()} | Document ID: ${res.data.document_id} | Chunks: ${res.data.chunks}`
       );
       setFile(null);
+      
+      // Clear file input
+      document.querySelector('input[type="file"]').value = '';
     } catch (e) {
       console.error(e);
-      setStatus("Upload failed.");
+      const errorMsg = e.response?.data?.detail || "Upload failed";
+      setStatus(`❌ ${errorMsg}`);
     } finally {
       setLoading(false);
     }
@@ -34,23 +38,28 @@ export default function DocumentUploader() {
 
   return (
     <div className="panel">
-      <h2>Upload Documents</h2>
+      <h2>📤 Upload Documents</h2>
       <p className="small">
-        Upload PDFs or images with your org policies / SOPs / manuals. OpsCopilot will use
-        them as context for answers.
+        Upload documents with your policies, SOPs, or manuals. Supported formats:
+        <br />
+        <strong>PDF, DOCX, XLSX, XLS, CSV, TXT, PNG, JPG, JPEG</strong>
       </p>
 
       <input
         type="file"
-        accept=".pdf,.png,.jpg,.jpeg,image/png,image/jpeg"
+        accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.txt,.png,.jpg,.jpeg"
         onChange={(e) => setFile(e.target.files?.[0] || null)}
       />
 
       <button onClick={handleUpload} disabled={!file || loading}>
-        {loading ? "Uploading..." : "Upload"}
+        {loading ? "⏳ Uploading..." : "📤 Upload"}
       </button>
 
-      {status && <div className="status-text">{status}</div>}
+      {status && (
+        <div className={status.startsWith("✅") ? "status-success" : "status-error"}>
+          {status}
+        </div>
+      )}
     </div>
   );
 }
