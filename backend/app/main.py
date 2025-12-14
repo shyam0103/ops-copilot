@@ -5,7 +5,6 @@ from app.api import auth, chat, documents, tickets
 
 app = FastAPI(title="OpsCopilot API")
 
-# ✅ EXACT origins
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -16,15 +15,17 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
-    allow_methods=["*"],          # IMPORTANT
-    allow_headers=["*"],          # 🔥 THIS FIXES YOUR ISSUE
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-# Routers
-app.include_router(auth.router, prefix="/auth", tags=["Auth"])
-app.include_router(chat.router, prefix="/api", tags=["Chat"])
-app.include_router(documents.router, prefix="/api", tags=["Documents"])
-app.include_router(tickets.router, prefix="/api", tags=["Tickets"])
+# ✅ IMPORTANT: auth router already has prefix="/auth"
+app.include_router(auth.router)
+
+# API routes
+app.include_router(chat.router, prefix="/api")
+app.include_router(documents.router, prefix="/api")
+app.include_router(tickets.router, prefix="/api")
 
 @app.get("/")
 def root():
