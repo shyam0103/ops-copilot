@@ -1,32 +1,47 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, chat, documents, tickets
+from app.api.auth import router as auth_router
+from app.api.chat import router as chat_router
+from app.api.documents import router as documents_router
+from app.api.tickets import router as tickets_router
+
+from app.db.base import Base
+from app.db.session import engine
+
+# -------------------------
+# Create DB tables on startup
+# -------------------------
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="OpsCopilot API")
 
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "https://ops-copilot.vercel.app",
-]
-
+# -------------------------
+# CORS (VERY IMPORTANT)
+# -------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "https://ops-copilot.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# ✅ IMPORTANT: auth router already has prefix="/auth"
-app.include_router(auth.router)
+# -------------------------
+# Routers
+# -------------------------
+app.include_router(auth_router, prefix="/auth", tags=["Auth"])
+app.include_router(chat_router, prefix="/api", tags=["Chat"])
+app.include_router(documents_router, prefix="/api", tags=["Documents"])
+app.include_router(tickets_router, prefix="/api", tags=["Tickets"])
 
-# API routes
-app.include_router(chat.router, prefix="/api")
-app.include_router(documents.router, prefix="/api")
-app.include_router(tickets.router, prefix="/api")
-
+# -------------------------
+# Health check
+# -------------------------
 @app.get("/")
-def root():
-    return {"status": "OpsCopilot backend running"}
+def health():
+    return {"status": "ok"}
