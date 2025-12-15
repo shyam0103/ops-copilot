@@ -11,7 +11,7 @@ class LLMClient:
         # Get API key from environment
         api_key = os.getenv("GEMINI_API_KEY", "")
         self.client = genai.Client(api_key=api_key)
-        self.model_name = "gemini-2.0-flash-exp"
+        self.model_name = "gemini-2.5-flash-lite"
 
     def chat(self, messages: List[Dict[str, str]]) -> str:
         full_prompt = "\n".join(
