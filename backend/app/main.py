@@ -1,32 +1,44 @@
+# backend/app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.db.session import engine
-from app.db.base import Base
-from app.api.auth import router as auth_router
+from app.api import chat
+from app.api import documents
+from app.api import tickets
+from app.api import auth
 
-app = FastAPI()
+app = FastAPI(title="OpsCopilot Backend", version="0.1.0")
 
-# CORS (important for Vercel)
+# CORS - Allow Vercel
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "https://ops-copilot.vercel.app",
-    ],
+    allow_origins=["*"],  # Change to your Vercel URL later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 🔥 CREATE TABLES ON STARTUP
-@app.on_event("startup")
-def startup():
-    Base.metadata.create_all(bind=engine)
+# Initialize database on startup
+from app.core.db import init_db
 
-# Routes
-app.include_router(auth_router, prefix="/auth", tags=["auth"])
+@app.on_event("startup")
+def startup_event():
+    print("🚀 Initializing database...")
+    init_db()
+    print("✅ Database ready!")
+
+# Routers
+app.include_router(chat.router, prefix="/api")
+app.include_router(documents.router, prefix="/api")
+app.include_router(tickets.router, prefix="/api")
+app.include_router(auth.router)
+
 
 @app.get("/")
-def health():
+def root():
+    return {"status": "ok", "message": "OpsCopilot API"}
+
+
+@app.get("/health")
+def health_check():
     return {"status": "ok"}
