@@ -1,4 +1,4 @@
-# backend/app/api/auth.py
+# app/api/auth.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
@@ -16,7 +16,6 @@ from app.models.user import User
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-# Schemas defined HERE, not in separate folder
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str
