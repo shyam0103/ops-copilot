@@ -14,13 +14,18 @@ pwd_context = CryptContext(
 
 
 def hash_password(password: str) -> str:
-    # bcrypt safety: ensure max length
-    password = password.encode("utf-8")[:72]
+    """
+    Hash a password using bcrypt.
+    Passlib handles UTF-8 encoding and bcrypt's 72-byte limit internally.
+    """
     return pwd_context.hash(password)
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    plain = plain.encode("utf-8")[:72]
+    """
+    Verify a plain password against a bcrypt hash.
+    Passlib handles UTF-8 encoding internally.
+    """
     return pwd_context.verify(plain, hashed)
 
 
