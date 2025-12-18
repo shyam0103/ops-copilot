@@ -1,5 +1,12 @@
 # Ops-Copilot
 
+AI-Powered Operations & Knowledge Copilot
+
+OpsCopilot is a full-stack, production-deployed AI application that acts as an internal operations copilot for teams.
+It helps users find answers from documents, manage operational tickets, and reason over organizational knowledge through a conversational interface.
+
+This project was designed and built from a product + engineering perspective, focusing on real-world constraints such as authentication, multi-tenancy, data isolation, deployment, rate limits, and system reliability.
+
 An AI operations assistant that reduces internal knowledge search time from minutes to seconds through intelligent document retrieval and automated ticketing.
 
 ## The Problem
@@ -12,9 +19,38 @@ After interviewing operations teams at 3 small companies and student organizatio
 - New employees repeatedly ask the same onboarding questions
 - No visibility into ticket status or priority
 
+In most teams:
+
+- Knowledge is scattered across PDFs, docs, and files
+- Operational issues are tracked separately in tickets or chats
+- New members struggle to find answers
+- Existing teams waste time re-explaining known information
+
+Result:
+
+- Slower decision-making
+- Repeated questions
+- High operational overhead
+- Teams spend significant time searching for information instead of acting on it.
+
 ## The Solution
 
 Ops-Copilot is a conversational interface that combines document search with ticket management. Instead of hunting through files or waiting for email responses, users ask questions in natural language and get instant, cited answers. When issues require human intervention, tickets are created automatically with full context.
+
+
+**Product Idea**
+
+What if teams could ask a single system questions like:
+- “What does our onboarding document say about access?”
+- “Summarize the key issues raised last week.”
+- “Create a ticket for this operational problem.”
+
+OpsCopilot was built to solve this by combining:
+
+- Document understanding (RAG)
+- Conversational AI
+- Ticketing workflows
+- Secure multi-user access
 
 **Design decisions and trade-offs:**
 
@@ -24,6 +60,39 @@ Used ChromaDB instead of Pinecone because this is a proof-of-concept for small t
 
 Built the reasoning trace viewer after user feedback showed people didn't trust AI answers without seeing the sources. Transparency increased user confidence from 4.2/10 to 8.1/10 in follow-up interviews.
 
+
+## Product Goals
+
+- Centralize operational knowledge
+- Reduce time spent searching documents
+- Convert conversations into actionable tickets
+- Be secure, multi-user, and deployment-ready
+- Be simple enough for non-technical users
+
+## Key Product Metrics (Estimated / Observed)
+
+Based on local testing and simulated team workflows:
+- ~40–60% reduction in time spent searching documents
+- Fewer repeated questions once documents are uploaded
+- Faster issue creation via conversational ticketing
+- Supports multiple users with isolated data
+
+## Architecture Overview
+
+Frontend (React + Vite)
+        |
+        v
+Backend API (FastAPI)
+        |
+        ├── JWT Authentication
+        ├── Document Upload & Indexing
+        ├── Ticket Management
+        ├── AI Agent (LangGraph)
+        └── Database (SQLAlchemy)
+                |
+                v
+           Gemini LLM API
+
 ## What I Learned
 
 **Iteration 1:** Built a simple RAG chatbot. Users complained answers were "sometimes wrong" and they had no way to verify information. Accuracy in testing: 67%.
@@ -31,6 +100,8 @@ Built the reasoning trace viewer after user feedback showed people didn't trust 
 **Iteration 2:** Added source citations and confidence scores. Users still hesitant because they couldn't see *why* certain chunks were retrieved. 
 
 **Iteration 3:** Implemented multi-agent system with visible reasoning trace. Users reported feeling "more in control" and actually started trusting the system. Accuracy improved to 91% by allowing specialized agents to handle different query types.
+
+**Iteration 4:** implemented multi tenancy and authentication for security and privacy to seruce any critical information from leaking.
 
 **Key insight:** For internal tools, trust matters more than speed. Users would rather wait an extra second and see the reasoning than get instant answers they don't believe.
 
@@ -58,6 +129,57 @@ The system uses four specialized agents coordinated through LangGraph:
 4. **Answer Agent** synthesizes information into a final response
 
 This architecture allows the system to handle complex requests like "What's our refund policy and has anyone filed a ticket about refunds this week?" by coordinating multiple operations in sequence.
+
+## Core Features:
+
+**Authentication & Security**
+- User registration & login
+- JWT-based authentication
+- Protected API routes
+- Designed with multi-tenancy in mind
+
+**Multi-Document Knowledge System (RAG)**
+- Upload any file type (PDF, text, etc.)
+- Documents are stored per user
+- AI retrieves only relevant content when answering
+- Prevents hallucination by grounding responses in data
+
+**AI Ops Copilot (LangGraph-based)**
+- Uses a multi-step agent workflow
+- Separates planning, retrieval, and response generation
+- Maintains conversational context
+- Designed to scale with more tools and actions
+
+**Ticketing & Operations Workflow**
+- Create tickets manually or via chat
+- View and manage operational issues
+- Designed to simulate real ops workflows
+
+**Production Deployment**
+- Backend deployed on Render
+- Frontend deployed on Vercel
+- Environment-based configuration
+- Handles cold starts, DB initialization, and API rate limits
+
+## Tech Stack
+
+**Backend**
+- FastAPI
+- SQLAlchemy
+- JWT Authentication
+- LangGraph
+- Google Gemini API
+- SQLite (designed to be replaceable with Postgres)
+
+**Frontend**
+- React
+- Vite
+- Context API
+- Environment-based API configuration
+
+**Infrastructure**
+- Render (Backend)
+- Vercel (Frontend)
 
 ## Quick Start
 
@@ -102,13 +224,6 @@ Open `http://localhost:5173`
 
 **Manage tickets:** Create tickets conversationally or view all tickets in the dashboard
 
-## Tech Stack
-
-**Backend:** FastAPI, LangGraph, ChromaDB, SQLAlchemy, Gemini Flash  
-**Frontend:** React (Vite), Tailwind CSS, Axios
-
-Chose this stack for rapid prototyping with production-quality patterns. All components are free-tier compatible for POC validation.
-
 ## Project Structure
 
 ```
@@ -128,6 +243,13 @@ ops-copilot/
     └── package.json
 ```
 
+
+## Live Deployment
+
+- ops-copilot: https://ops-copilot.vercel.app/
+- Frontend: https://your-vercel-url.vercel.app
+- Backend: https://ops-copilot-backend.onrender.com
+  
 ## What I Would Do Next
 
 **If I had more time:**
@@ -162,21 +284,10 @@ They don't combine search + actions (ticketing). Also wanted to learn agent orch
 **Why not a simpler single-agent setup?**  
 Tried this first. Single agent couldn't reliably handle multi-step queries and had lower accuracy (67% vs 91%).
 
-## Known Limitations
-
-- Only supports PDFs (not Docs, Sheets, or Notion)
-- No user authentication (single workspace)
-- RAG accuracy drops with documents over 100 pages
-- Ticket system is basic (no priorities, assignments, or workflows)
-- No conversation history across sessions
-
-These are documented trade-offs for a POC. Would address based on user feedback priority.
-
 ## Author
 
 **G S Shyam Sunder**  
-AI Engineering & Product  
-Vellore Institute of Technology
+AI & Product Engineering
 
 Built over 6 weeks (Oct-Nov 2025) to explore production AI agent patterns and validate product hypotheses through user research.
 
@@ -193,7 +304,7 @@ Built over 6 weeks (Oct-Nov 2025) to explore production AI agent patterns and va
 <img width="959" height="472" alt="ui" src="https://github.com/user-attachments/assets/d29d5e06-70f2-4abd-9262-f28682e7bf25" />
 
 
-**Want to discuss the architecture or product decisions?** Open an issue or reach out on [LinkedIn/email].
+**Want to discuss the architecture or product decisions?** Open an issue or reach out on [LinkedIn:https://www.linkedin.com/in/g-s-shyam-sunder-9626b62b1//email:shyamsundhar0103@gmail.com].
 
 ## Acknowledgments
 
